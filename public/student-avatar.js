@@ -1,0 +1,5 @@
+'use strict';
+const studentCartoons=['🐱','🐶','🐼','🐨','🦊','🐯','🐰','🐸','🐧','🦉','🐻','🐹'];
+function studentCartoon(seat){return studentCartoons[(Number(seat)-1+studentCartoons.length)%studentCartoons.length]}
+const renderBeforeStudentBadge=render;render=function(){renderBeforeStudentBadge();const avatar=$('.header-right .avatar');if(!avatar)return;avatar.classList.add('student-badge');avatar.replaceChildren();if(classroomSession){const student=classroomSession.student,face=el('span',studentCartoon(student.seat),'cartoon-face');face.setAttribute('aria-hidden','true');avatar.setAttribute('aria-label',student.name+'，座號 '+student.seat);avatar.append(face,el('strong',String(student.seat).padStart(2,'0')+' 號','cartoon-seat'))}else{avatar.setAttribute('aria-label','學生尚未登入');avatar.append(el('span','🐣','cartoon-face'),el('strong','未登入','cartoon-seat'))}};
+const optionBeforeCartoon=updateStudentOptions;updateStudentOptions=function(){optionBeforeCartoon();[...studentSelect.options].forEach(o=>{const student=classroomRoster.find(s=>s.id===o.value);if(student)o.textContent=studentCartoon(student.seat)+' '+o.textContent})};render();

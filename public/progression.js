@@ -1,5 +1,5 @@
 'use strict';
-// 完成狀態只由作答與量測表計算；忽略舊版手動勾選紀錄。
+// 作答須經學生送出，並通過共用初步規準，才能計入完成進度。
 const gateState=()=>SolarProgress.progress(readLab());
 count=function(i){return gateState().counts[i]||0};
 const originalRender=render;
@@ -12,7 +12,7 @@ const taskPrompts=[
 ];
 openLesson=function(i){
  const state=gateState();if(!state.unlocked[i]){selected=state.unlocked.findLastIndex(Boolean);render();toast('請先填寫完成上一關的必填內容');return}
- selected=i;render();const body=$('#lessonBody'),d=data[i];body.replaceChildren();body.append(el('div','第 '+(i+1)+' 關 · '+d.tag,'tags'),el('h2',d.name),el('p','填寫必填內容後會自動勾選完成，全部完成才可前往下一關。此處檢查填寫完整性，內容正確性由教師評閱。'));
+ selected=i;render();const body=$('#lessonBody'),d=data[i];body.replaceChildren();body.append(el('div','第 '+(i+1)+' 關 · '+d.tag,'tags'),el('h2',d.name),el('p','填好後請按「送出作答，取得建議」。每題初步檢核至少 70 分且無明顯資料問題，才會自動打勾並解鎖下一關。正式成績與答案正確性由教師判定。'));
  d.tasks.forEach((t,j)=>{const label=el('div',undefined,'task'),input=el('input');input.type='checkbox';input.disabled=true;input.dataset.task=j;input.checked=state.tasks[i][j];input.setAttribute('aria-label',t+'（系統自動判定）');const tx=el('span');tx.append(el('strong',t),el('small','等待填寫完成'));label.append(input,tx);body.append(label)});
  window.enrichSolarLesson(i,body);
  const form=el('section',undefined,'required-answers');form.append(el('h3','本關必填作答'),el('p','每題至少填寫 10 個中文字或英數字，空白與標點不計。內容即時儲存在此瀏覽器。'));
@@ -20,10 +20,24 @@ openLesson=function(i){
   if(i===2&&j===1){form.append(el('p','量測任務：請填妥上方 0～10 分鐘全部 55 個數值欄位（V 必須大於 0，其餘可為 0），並在第 5、10 分鐘的「觀察」各寫至少 10 個字，說明溫度與聲音等現象。','measurement-requirement'));return}
   const label=el('label',undefined,'answer-label');label.append(el('strong',task),el('span',taskPrompts[i][j]));const text=el('textarea');text.rows=3;text.required=true;text.dataset.answer=i+'-'+j;text.setAttribute('aria-label',task+'必填作答');text.placeholder='至少 10 個中文字或英數字';text.value=(readLab().answers||{})[i+'-'+j]||'';const status=el('small',undefined,'answer-status');text.oninput=()=>{const lab=readLab();lab.answers=lab.answers||{};lab.answers[i+'-'+j]=text.value;writeLab(lab)};label.append(text,status);form.append(label);
  });body.append(form);
- const bar=el('div',undefined,'gate-footer'),message=el('p',undefined,'gate-message'),next=el('button',undefined,'primary');next.id='nextStage';next.onclick=()=>{if(count(i)!==3)return;if(i<3){openLesson(i+1);$('#lesson').scrollTop=0}else{$('#lesson').close();toast('恭喜完成全部四關！');view='progress';$$('.nav').find(b=>b.dataset.view==='progress').click()}};bar.append(message,next);body.append(bar);updateLessonGate(i);if(!$('#lesson').open)$('#lesson').showModal();$('#lesson').scrollTop=0;
+ const criteria=el('details',undefined,'review-criteria');criteria.append(el('summary','初步評分規準與使用限制'),el('p','文字題：基本說明 25 分，三項主題重點各 25 分；每題至少 70 分。大量重複字元、整題照貼另一題、明顯的單位或算式問題，都須先修正。量測題檢查完整性、V×A、累積量及耗能一致性。'),el('p','這是規準式自動檢核，並非 AI 教師。分數不是正式成績；可能無法辨識所有同義表達，也不能驗證數據真實性。有疑問請與教師確認。'));body.append(criteria);
+ const feedback=el('section',undefined,'review-feedback');feedback.id='reviewFeedback';feedback.setAttribute('aria-live','polite');body.append(feedback);
+ const bar=el('div',undefined,'gate-footer'),message=el('p',undefined,'gate-message'),actions=el('div',undefined,'review-actions'),submit=el('button','送出作答，取得建議','primary'),next=el('button',undefined,'primary');submit.id='submitAnswers';submit.onclick=()=>submitLesson(i);next.id='nextStage';next.onclick=()=>{if(count(i)!==3)return;if(i<3){openLesson(i+1);$('#lesson').scrollTop=0}else{$('#lesson').close();toast('恭喜完成全部四關！');view='progress';$$('.nav').find(b=>b.dataset.view==='progress').click()}};actions.append(submit,next);bar.append(message,actions);body.append(bar);updateLessonGate(i);if(!$('#lesson').open)$('#lesson').showModal();$('#lesson').scrollTop=0;
 };
-function updateLessonGate(i){const state=gateState(),body=$('#lessonBody');body.querySelectorAll('input[data-task]').forEach(input=>{const j=+input.dataset.task;input.checked=state.tasks[i][j];input.parentElement.querySelector('small').textContent=input.checked?'已填寫完成，自動勾選':'尚有必填內容未完成'});body.querySelectorAll('textarea[data-answer]').forEach(text=>{const valid=SolarProgress.textComplete(text.value);text.parentElement.querySelector('.answer-status').textContent=valid?'已填寫完成':'至少需要 10 個中文字或英數字';text.setAttribute('aria-invalid',String(!valid))});const complete=state.counts[i]===3;const button=$('#nextStage');button.disabled=!complete;button.textContent=i<3?'前往下一關：'+data[i+1].name:'完成旅程，查看成就';body.querySelector('.gate-message').textContent=complete?(i<3?'本關已自動完成，下一關已解鎖。':'全部關卡已填寫完成！'):'已完成 '+state.counts[i]+'/3 個任務，填妥全部必填內容才能前往下一關。';render()}
+function updateLessonGate(i){
+ const lab=readLab(),state=gateState(),body=$('#lessonBody');
+ body.querySelectorAll('input[data-task]').forEach(input=>{const j=+input.dataset.task;input.checked=state.tasks[i][j];input.parentElement.querySelector('small').textContent=input.checked?'已送出並通過初步檢核':'待送出作答或修正建議'});
+ body.querySelectorAll('textarea[data-answer]').forEach(text=>{const valid=SolarProgress.textComplete(text.value);text.parentElement.querySelector('.answer-status').textContent=valid?((lab.submissions||{})[i]?.fingerprint===SolarProgress.fingerprint(i,lab)?'已送出，請查看下方初步評分與建議':'草稿已儲存，請送出取得檢核建議'):'至少需要 10 個中文字或英數字';text.setAttribute('aria-invalid',String(!valid))});
+ const complete=state.counts[i]===3,button=$('#nextStage');button.disabled=!complete;button.textContent=i<3?'前往下一關：'+data[i+1].name:'完成旅程，查看成就';body.querySelector('.gate-message').textContent=complete?(i<3?'本關已通過初步檢核，下一關已解鎖。':'全部關卡已送出並通過初步檢核！'):'請送出作答；若有缺漏或問題，依建議修正後再送出。';
+ const box=$('#reviewFeedback');box.replaceChildren();const saved=(lab.feedback||{})[i];if(saved){const stale=saved.fingerprint!==SolarProgress.fingerprint(i,lab),report=saved.report;box.classList.toggle('needs-revision',!report.passed||stale);box.append(el('h3','上次送出初步評分：'+report.score+'/100'),el('p',stale?'草稿已變更：以下為上次建議，修改後請重新送出。':report.passed?'已達初步門檻，可繼續學習。仍請確認教師的正式回饋。':'目前需要修正，請參考下方建議後再次送出。'));
+ report.tasks.forEach((task,j)=>{const card=el('article',undefined,'feedback-task');card.append(el('h4',data[i].tasks[j]+' · '+task.score+' 分'+(task.passed?'（達門檻）':'（需修正）')));const list=el('ul');if(task.issues.length)task.issues.forEach(t=>list.append(el('li',t)));else list.append(el('li','已找到本題主要重點，請再次確認內容與證據。'));card.append(list);box.append(card)})}
+ render();
+}
+function submitLesson(i){
+ const lab=readLab(),report=SolarProgress.review(i,lab),fingerprint=SolarProgress.fingerprint(i,lab);lab.submissions=lab.submissions||{};lab.submissions[i]={version:SolarProgress.version,fingerprint,submittedAt:new Date().toISOString()};lab.feedback=lab.feedback||{};lab.feedback[i]={fingerprint,report};writeLab(lab);updateLessonGate(i);$('#reviewFeedback').scrollIntoView({block:'start',behavior:'smooth'});toast(report.passed?'已通過初步檢核，下一關已解鎖':'已提供修改建議，修正後可以再次送出');
+}
 document.addEventListener('input',e=>{if($('#lesson').open&&e.target.closest('#lessonBody'))updateLessonGate(selected)});
 $('#clear').onclick=()=>{if(confirm('確定清除本瀏覽器的全部作答、量測表與學習進度嗎？課程名稱會保留。')){localStorage.removeItem('solar-lab-v1');done={};save();selected=0;render();toast('全部作答與進度已重設')}};
 const stateAtStart=gateState();selected=stateAtStart.counts.findIndex((c,i)=>stateAtStart.unlocked[i]&&c<3);if(selected<0)selected=3;render();
+
 

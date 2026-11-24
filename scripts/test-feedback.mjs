@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';import fs from 'node:fs';import vm from 'node:vm';import {goodLab,submitStage} from './fixtures.mjs';
+const context={};vm.createContext(context);vm.runInContext(fs.readFileSync('public/feedback-rules.js','utf8'),context);const rules=context.SolarProgress;
+assert.equal(rules.progress({}).counts.join(','),'0,0,0,0');assert.equal(rules.progress({}).unlocked.join(','),'true,false,false,false');
+const lab=goodLab();assert.equal(rules.progress(lab).counts.join(','),'0,0,0,0','Filled drafts cannot complete a stage before submission');
+submitStage(lab,rules,1);assert.equal(rules.progress(lab).counts[1],0,'Cannot submit past locked stage');
+submitStage(lab,rules,0);assert.equal(rules.progress(lab).counts[0],3);assert.equal(rules.progress(lab).unlocked[1],true);
+for(let i=1;i<4;i++){assert.equal(rules.review(i,lab).passed,true,'Fixture stage '+i+' passes rubric');submitStage(lab,rules,i)}assert.equal(rules.progress(lab).counts.join(','),'3,3,3,3');
+const poor=goodLab();poor.answers['0-0']='我覺得這個活動非常好玩希望趕快完成學習';assert.equal(rules.review(0,poor).passed,false);assert.ok(rules.review(0,poor).tasks[0].issues.length>0);submitStage(poor,rules,0);assert.equal(rules.progress(poor).unlocked[1],false);
+poor.answers['0-0']='太陽能板把陽光轉換成電能，供應風扇運轉';assert.equal(rules.review(0,poor).passed,true);assert.equal(rules.progress(poor).counts[0],0,'Editing invalidates the previous submission');submitStage(poor,rules,0);assert.equal(rules.progress(poor).counts[0],3);
+const arithmetic=goodLab();arithmetic.answers['1-1']='5000 × 3.7 ÷ 1000 = 185 Wh，這是由容量換算的電能';assert.equal(rules.review(1,arithmetic).passed,false);assert.match(rules.review(1,arithmetic).tasks[1].issues.join(''),/換算算式/);
+const duplicate=goodLab();duplicate.answers['0-1']=duplicate.answers['0-0'];assert.equal(rules.review(0,duplicate).tasks[0].passed,false);assert.match(rules.review(0,duplicate).tasks[1].issues.join(''),/完全相同/);
+const data=goodLab();data.rows['7-w']='50';assert.equal(rules.review(2,data).tasks[1].passed,false);assert.match(rules.review(2,data).tasks[1].issues.join(''),/V × A/);data.rows['7-w']='4';data.rows['9-mah']='0';assert.match(rules.review(2,data).tasks[1].issues.join(''),/下降/);data.rows['7-w']='';assert.equal(rules.measurementsComplete(data.rows),false);
+lab.answers['0-1']='';assert.equal(rules.progress(lab).counts.join(','),'0,0,0,0','Earlier draft changes lock subsequent stages');
+assert.equal(rules.textComplete('          '),false);assert.equal(rules.textComplete('！！！！！？？？？？'),false);
+const roster=JSON.parse(fs.readFileSync('public/roster.json','utf8').replace(/^\uFEFF/,''));assert.equal(roster.length,22);assert.equal(new Set(roster.map(s=>s.id)).size,22);
+console.log('Passed: submission gates, scoring feedback, weak/repeated answers, arithmetic errors, measurement consistency and 22-student roster.');

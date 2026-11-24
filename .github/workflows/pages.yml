@@ -24,7 +24,7 @@ jobs:
       - name: Validate progression and backend
         run: |
           node scripts/build.mjs
-          node scripts/test.mjs
+          node scripts/test-feedback.mjs
           node scripts/test-backend.mjs
       - name: Build GitHub Pages
         run: node scripts/build-pages.mjs
@@ -35,3 +35,4 @@ jobs:
       - name: Deploy GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
