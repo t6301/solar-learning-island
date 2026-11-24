@@ -1,0 +1,9 @@
+import assert from 'node:assert/strict';import {localDatabase} from './local-db.mjs';import worker from '../dist/server/index.js';
+const env={DB:localDatabase()},origin='https://classroom.test';let token='';async function call(path,body){const response=await worker.fetch(new Request(origin+path,{method:body?'POST':'GET',headers:{Origin:origin,'Content-Type':'application/json',Authorization:'Bearer '+token},...(body?{body:JSON.stringify(body)}:{})}),env);return {status:response.status,data:await response.json()}}
+assert.equal((await call('/api/roster')).data.students.length,22);assert.equal((await call('/api/login',{studentId:'999'})).status,400);const session=await call('/api/login',{studentId:'1'});assert.equal(session.status,200);token=session.data.token;
+let r=await call('/api/progress',{lab:{done:{'0-0':true,'0-1':true,'0-2':true}}});assert.equal(r.data.islands[0].length,0);
+const lab={answers:{},rows:{}};for(let i=0;i<4;i++)for(let j=0;j<3;j++)lab.answers[i+'-'+j]='這是一份完整記錄實測理由與學習反思的作答';
+for(let m=0;m<=10;m++)for(const k of ['v','a','w','mah','wh'])lab.rows[m+'-'+k]=k==='v'?'5':'0';lab.rows['5-obs']='第五分鐘溫度維持正常且沒有不尋常聲音';lab.rows['10-obs']='第十分鐘溫度稍微升高並已拍下量測照片';
+r=await call('/api/progress',{lab});assert.equal(r.status,200);assert.deepEqual(r.data.islands.map(a=>a.length),[1,1,1,1]);r=await call('/api/progress',{lab});assert.deepEqual(r.data.islands.map(a=>a.length),[1,1,1,1]);
+token='invalid';assert.equal((await call('/api/progress',{lab})).status,401);const second=await call('/api/login',{studentId:'2'});token=second.data.token;lab.answers['0-1']='';r=await call('/api/progress',{lab});assert.deepEqual(r.data.islands.map(a=>a.length),[1,1,1,1]);lab.answers['0-1']='我預測日照充足時太陽能板輸出功率會增加';r=await call('/api/progress',{lab});assert.deepEqual(r.data.islands.map(a=>a.length),[2,2,2,2]);
+console.log('Passed: database migration, roster login, server-side gates, unauthorized rejection, duplicate prevention and shared counts.');

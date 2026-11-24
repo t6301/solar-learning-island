@@ -1,0 +1,156 @@
+[
+  {
+    "id": "1",
+    "seat": 1,
+    "group": 4,
+    "name": "王子榤",
+    "role": ""
+  },
+  {
+    "id": "2",
+    "seat": 2,
+    "group": 6,
+    "name": "朱代恩",
+    "role": ""
+  },
+  {
+    "id": "3",
+    "seat": 3,
+    "group": 4,
+    "name": "吳欣懋",
+    "role": "副組長"
+  },
+  {
+    "id": "4",
+    "seat": 4,
+    "group": 2,
+    "name": "李柏翰",
+    "role": ""
+  },
+  {
+    "id": "5",
+    "seat": 5,
+    "group": 1,
+    "name": "李駿佑",
+    "role": ""
+  },
+  {
+    "id": "7",
+    "seat": 7,
+    "group": 1,
+    "name": "林彥劭",
+    "role": "組長"
+  },
+  {
+    "id": "8",
+    "seat": 8,
+    "group": 4,
+    "name": "林督穎",
+    "role": ""
+  },
+  {
+    "id": "9",
+    "seat": 9,
+    "group": 2,
+    "name": "林聖恩",
+    "role": "組長"
+  },
+  {
+    "id": "10",
+    "seat": 10,
+    "group": 5,
+    "name": "林箔莨",
+    "role": "組長"
+  },
+  {
+    "id": "11",
+    "seat": 11,
+    "group": 6,
+    "name": "施呈勳",
+    "role": ""
+  },
+  {
+    "id": "12",
+    "seat": 12,
+    "group": 4,
+    "name": "洪昱暘",
+    "role": "組長"
+  },
+  {
+    "id": "13",
+    "seat": 13,
+    "group": 2,
+    "name": "胡辰宇",
+    "role": ""
+  },
+  {
+    "id": "14",
+    "seat": 14,
+    "group": 3,
+    "name": "許秉鴻",
+    "role": ""
+  },
+  {
+    "id": "17",
+    "seat": 17,
+    "group": 5,
+    "name": "陳昱憲",
+    "role": ""
+  },
+  {
+    "id": "18",
+    "seat": 18,
+    "group": 5,
+    "name": "陳偉則",
+    "role": ""
+  },
+  {
+    "id": "19",
+    "seat": 19,
+    "group": 3,
+    "name": "陳凱瑄",
+    "role": "副組長"
+  },
+  {
+    "id": "20",
+    "seat": 20,
+    "group": 6,
+    "name": "童宇辰",
+    "role": "副組長"
+  },
+  {
+    "id": "21",
+    "seat": 21,
+    "group": 3,
+    "name": "黃子權",
+    "role": ""
+  },
+  {
+    "id": "23",
+    "seat": 23,
+    "group": 3,
+    "name": "塗景翔",
+    "role": "組長"
+  },
+  {
+    "id": "24",
+    "seat": 24,
+    "group": 6,
+    "name": "蔡元勝",
+    "role": "組長"
+  },
+  {
+    "id": "25",
+    "seat": 25,
+    "group": 5,
+    "name": "鄭皓宇",
+    "role": "副組長"
+  },
+  {
+    "id": "27",
+    "seat": 27,
+    "group": 1,
+    "name": "謝汶憲",
+    "role": ""
+  }
+]
