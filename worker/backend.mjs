@@ -1,13 +1,14 @@
 const json=(data,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
 const hash=async token=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(token)))].map(b=>b.toString(16).padStart(2,'0')).join('');
 async function summary(env){const result=await env.DB.prepare('SELECT student_id, island FROM completions ORDER BY completed_at, student_id').all();const islands=Array.from({length:4},()=>[]);for(const row of result.results||[]){const student=ROSTER.find(s=>s.id===row.student_id);if(student&&islands[row.island])islands[row.island].push({id:student.id,seat:student.seat,name:student.name,group:student.group})}return {islands,totalStudents:ROSTER.length}}
-export default {async fetch(request,env){
+const allowedOrigin=request=>{const origin=request.headers.get('Origin');return origin===new URL(request.url).origin||origin==='https://t6301.github.io'};
+async function handleRequest(request,env){
  const url=new URL(request.url),path=url.pathname;
  try{
   if(path==='/api/roster'&&request.method==='GET')return json({students:ROSTER});
   if(path==='/api/islands'&&request.method==='GET')return json(await summary(env));
   if(path.startsWith('/api/')&&request.method==='POST'){
-   if(request.headers.get('Origin')!==url.origin)return json({error:'請從本站登入與送出紀錄。'},403);
+   if(!allowedOrigin(request))return json({error:'請從教學島網站登入與送出紀錄。'},403);
    if(Number(request.headers.get('Content-Length')||0)>65000)return json({error:'資料超過大小限制。'},413);
    const raw=await request.text();if(raw.length>65000)return json({error:'資料超過大小限制。'},413);let payload;try{payload=JSON.parse(raw)}catch{return json({error:'資料格式錯誤。'},400)}
    if(path==='/api/login'){
@@ -30,4 +31,14 @@ export default {async fetch(request,env){
   const asset=ASSETS[path==='/'?'/index.html':path];if(!asset)return new Response('Not found',{status:404});
   return new Response(request.method==='HEAD'?null:asset.body,{headers:{'Content-Type':asset.type,'Cache-Control':'no-cache','X-Content-Type-Options':'nosniff','Referrer-Policy':'same-origin','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'"}});
  }catch(error){return json({error:'名單服務暫時無法使用，請稍後再試。'},503)}
+}
+export default {async fetch(request,env){
+ const origin=request.headers.get('Origin'),api=new URL(request.url).pathname.startsWith('/api/');
+ if(api&&request.method==='OPTIONS'){
+  if(!allowedOrigin(request))return json({error:'來源未獲授權。'},403);
+  return new Response(null,{status:204,headers:{'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'Content-Type, Authorization','Access-Control-Max-Age':'600','Vary':'Origin'}});
+ }
+ const response=await handleRequest(request,env);
+ if(api&&origin&&allowedOrigin(request)){const headers=new Headers(response.headers);headers.set('Access-Control-Allow-Origin',origin);headers.set('Vary','Origin');return new Response(response.body,{status:response.status,headers})}
+ return response;
 }};

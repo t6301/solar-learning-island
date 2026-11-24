@@ -3,7 +3,7 @@ let classroomSession=null,classroomRoster=[],classroomIslands=[[],[],[],[]],clas
 try{classroomSession=JSON.parse(localStorage.getItem('solar-classroom-session')||'null')}catch{}
 readLab=function(){if(!classroomSession)return {};try{return JSON.parse(localStorage.getItem('solar-lab-student-'+classroomSession.student.id)||'{}')}catch{return {}}};
 writeLab=function(lab){if(!classroomSession)return;try{localStorage.setItem('solar-lab-student-'+classroomSession.student.id,JSON.stringify(lab))}catch{toast('無法儲存，請允許本機儲存後再作答');return}clearTimeout(classroomSyncTimer);classroomSyncTimer=setTimeout(syncClassroom,900)};
-async function classroomApi(path,body){const headers={};if(body){headers['Content-Type']='application/json'}if(classroomSession)headers.Authorization='Bearer '+classroomSession.token;const r=await fetch(path,{method:body?'POST':'GET',headers,body:body?JSON.stringify(body):undefined});const data=await r.json();if(!r.ok)throw new Error(data.error||'服務暫時無法使用');return data}
+async function classroomApi(path,body){const headers={};if(body){headers['Content-Type']='application/json'}if(classroomSession)headers.Authorization='Bearer '+classroomSession.token;const r=await fetch(new URL(path,window.SOLAR_API_BASE||location.origin).href,{method:body?'POST':'GET',headers,body:body?JSON.stringify(body):undefined});const data=await r.json();if(!r.ok)throw new Error(data.error||'服務暫時無法使用');return data}
 function useClassroomSummary(result){if(Array.isArray(result.islands)&&result.islands.length===4)classroomIslands=result.islands;render()}
 async function refreshClassroom(){try{useClassroomSummary(await classroomApi('/api/islands'));classroomError='';$('#classroomStatus').textContent='完成旗幟已與全班同步'}catch{classroomError='目前無法讀取全班名單';$('#classroomStatus').textContent=classroomError+'，稍後自動重試'}}
 async function syncClassroom(){if(!classroomSession)return;if(classroomInFlight){classroomNeedsSync=true;return}classroomInFlight=true;$('#classroomStatus').textContent='正在同步完成旗幟…';try{const result=await classroomApi('/api/progress',{lab:readLab()});useClassroomSummary(result);$('#classroomStatus').textContent='完成旗幟已與全班同步'}catch(e){$('#classroomStatus').textContent=e.message+'；本機作答仍保留，可按「重新同步」'}finally{classroomInFlight=false;if(classroomNeedsSync){classroomNeedsSync=false;syncClassroom()}}}
@@ -27,5 +27,6 @@ let flagPointer=null;canvas.addEventListener('pointerdown',e=>{const r=canvas.ge
 const listBar=el('div',undefined,'roster-links');data.forEach((d,i)=>{const b=el('button',d.name+'完成者','small');b.onclick=()=>showIslandRoster(i);listBar.append(b)});classroomPanel.after(listBar);
 $('#clear').onclick=()=>{if(!classroomSession){toast('請先選擇學生登入');return}if(confirm('清除此學生在本瀏覽器的作答與進度？已公布的完成旗幟會保留。')){localStorage.removeItem('solar-lab-student-'+classroomSession.student.id);selected=0;render();toast('此學生的本機作答已重設')}};
 data.forEach((d,i)=>{d.x=i%2?240:-240;d.z=i<2?-310:310});render();refreshClassroom();setInterval(()=>{if(!document.hidden)refreshClassroom()},15000);
+
 
 

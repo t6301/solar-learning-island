@@ -7,3 +7,10 @@ for(let m=0;m<=10;m++)for(const k of ['v','a','w','mah','wh'])lab.rows[m+'-'+k]=
 r=await call('/api/progress',{lab});assert.equal(r.status,200);assert.deepEqual(r.data.islands.map(a=>a.length),[1,1,1,1]);r=await call('/api/progress',{lab});assert.deepEqual(r.data.islands.map(a=>a.length),[1,1,1,1]);
 token='invalid';assert.equal((await call('/api/progress',{lab})).status,401);const second=await call('/api/login',{studentId:'2'});token=second.data.token;lab.answers['0-1']='';r=await call('/api/progress',{lab});assert.deepEqual(r.data.islands.map(a=>a.length),[1,1,1,1]);lab.answers['0-1']='我預測日照充足時太陽能板輸出功率會增加';r=await call('/api/progress',{lab});assert.deepEqual(r.data.islands.map(a=>a.length),[2,2,2,2]);
 console.log('Passed: database migration, roster login, server-side gates, unauthorized rejection, duplicate prevention and shared counts.');
+const pagesOrigin='https://t6301.github.io';
+let preflight=await worker.fetch(new Request(origin+'/api/login',{method:'OPTIONS',headers:{Origin:pagesOrigin,'Access-Control-Request-Method':'POST','Access-Control-Request-Headers':'content-type,authorization'}}),env);
+assert.equal(preflight.status,204);assert.equal(preflight.headers.get('Access-Control-Allow-Origin'),pagesOrigin);
+const pagesLogin=await worker.fetch(new Request(origin+'/api/login',{method:'POST',headers:{Origin:pagesOrigin,'Content-Type':'application/json'},body:JSON.stringify({studentId:'1'})}),env);assert.equal(pagesLogin.status,200);assert.equal(pagesLogin.headers.get('Access-Control-Allow-Origin'),pagesOrigin);
+preflight=await worker.fetch(new Request(origin+'/api/login',{method:'OPTIONS',headers:{Origin:'https://untrusted.example'}}),env);assert.equal(preflight.status,403);assert.equal(preflight.headers.get('Access-Control-Allow-Origin'),null);
+const blocked=await worker.fetch(new Request(origin+'/api/login',{method:'POST',headers:{Origin:'https://untrusted.example','Content-Type':'application/json'},body:JSON.stringify({studentId:'1'})}),env);assert.equal(blocked.status,403);
+console.log('Passed: GitHub Pages CORS preflight and login; unrelated origins rejected.');
