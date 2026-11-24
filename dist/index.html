@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="zh-Hant-TW"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>太陽能教學島｜3D 學習島</title><link rel="stylesheet" href="style.css"></head><body>
+<aside class="rail"><a class="brand" href="#" aria-label="太陽能教學島首頁">◈</a><button class="nav active" data-view="map">◎<span>探索</span></button><button class="nav" data-view="tasks">▤<span>任務</span></button><button class="nav" data-view="progress">◇<span>成就</span></button><div class="rail-bottom">ISLAND<br>ACADEMY</div></aside>
+<main><header><a href="#" class="wordmark">太陽能教學島 <span>SOLAR ACADEMY</span></a><div class="header-right"><span class="template">高一能源探究</span><button id="edit" class="small">自訂課程</button><span class="avatar">學</span></div></header>
+<section class="intro"><div><div class="eyebrow">發電 × 儲能 × 量測 × 查證</div><h1>把陽光，變成學習的能量。</h1><p>從太陽能發電出發，用 10 分鐘實測看懂行動電源。</p></div><div class="trip"><span>我的探索旅程</span><strong id="total">0 <small>/ 12 個任務</small></strong><div class="track"><i id="bar"></i></div></div></section>
+<div class="tabs"><div><button class="tab active" data-filter="all">全部島嶼 <span>4</span></button><button class="tab" data-filter="doing">探索中</button><button class="tab" data-filter="done">已完成</button></div><span class="save-note">進度儲存在此瀏覽器</span></div>
+<section id="mapView" class="map-layout"><div class="world"><div class="map-title"><span class="pill">你的學習地圖</span><span>拖曳旋轉 · 滾輪縮放 · 點選島嶼</span></div><canvas id="scene" aria-label="可拖曳旋轉的 3D 學習群島；也可使用下方課程按鈕選擇島嶼"></canvas><div class="compass">N<br><span>✧</span></div><div class="map-controls"><button id="zoomout" aria-label="縮小">−</button><button id="reset" aria-label="重設視角">◎</button><button id="zoomin" aria-label="放大">＋</button></div><div class="map-footer"><span>✦ 先預測、親手量測，再與 AI 核對</span><span>可旋轉的 3D 場景</span></div></div>
+<aside class="detail"><div class="section-label">準備好登島了嗎？ <span>✧</span></div><div id="detail"></div></aside></section>
+<section class="courses"><div class="section-heading"><h2 id="listTitle">選一座島，開始探索</h2><span>跟著自己的步調學習</span></div><div id="cards"></div></section>
+<section id="progressView" hidden><h2>我的探索成就</h2><div id="badges"></div></section>
+<footer><span>◈ 太陽能教學島 · 以實測證據探索綠色能源</span><button id="clear">重設學習進度</button></footer></main>
+<dialog id="lesson"><form method="dialog"><button class="close" aria-label="關閉">×</button></form><div id="lessonBody"></div></dialog>
+<dialog id="editor"><form id="editForm"><h2>打造您的學習群島</h2><p>修改島嶼名稱與簡介，設定會保留在此瀏覽器。</p><div id="fields"></div><div class="form-actions"><button type="button" id="cancel">取消</button><button class="primary">儲存課程</button></div></form></dialog><div id="toast" role="status"></div><script src="solar.js"></script><script src="app.js"></script></body></html>
+
+
