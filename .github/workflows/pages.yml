@@ -28,6 +28,7 @@ jobs:
           node scripts/test-feedback.mjs
           node scripts/test-backend.mjs
           node scripts/test-teacher.mjs
+          node scripts/test-screenshots.mjs
       - name: Build GitHub Pages
         run: node scripts/build-pages.mjs
       - uses: actions/configure-pages@v5
@@ -53,5 +54,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: node scripts/deploy-pages.mjs
+
 
 

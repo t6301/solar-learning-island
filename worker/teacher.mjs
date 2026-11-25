@@ -26,8 +26,9 @@ async function teacherRoute(request,env){
   if(Number(claim.meta?.changes??claim.changes)!==1)return json({error:'清除確認已使用或到期，請重新讀取管理頁面。'},409);
   await env.DB.batch([
    env.DB.prepare("INSERT INTO classroom_meta (key, value) VALUES ('reset_version', 1) ON CONFLICT(key) DO UPDATE SET value = value + 1"),
-   env.DB.prepare('DELETE FROM completions'),env.DB.prepare('DELETE FROM battery_completions'),env.DB.prepare('DELETE FROM sessions'),env.DB.prepare('DELETE FROM teacher_sessions'),env.DB.prepare('DELETE FROM teacher_login_attempts')
+   env.DB.prepare('DELETE FROM completions'),env.DB.prepare('DELETE FROM battery_completions'),env.DB.prepare('DELETE FROM screenshots'),env.DB.prepare('DELETE FROM screenshot_completions'),env.DB.prepare('DELETE FROM sessions'),env.DB.prepare('DELETE FROM teacher_sessions'),env.DB.prepare('DELETE FROM teacher_login_attempts')
   ]);
+  await clearScreenshotObjects(env,body.resetVersion);
   return json({ok:true,resetVersion:await resetVersion(env),message:'已清除全班學習資料。所有裝置下次連線會重設作答、評分與登入狀態。'});
  }
  if(path==='/api/teacher/logout'&&request.method==='POST'){await env.DB.prepare('DELETE FROM teacher_sessions WHERE token_hash = ?').bind(session.token_hash).run();return json({ok:true})}

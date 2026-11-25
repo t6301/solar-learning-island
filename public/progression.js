@@ -3,7 +3,7 @@
 const gateState=()=>SolarProgress.progress(readLab());
 count=function(i){return gateState().counts[i]||0};
 const originalRender=render;
-render=function(){originalRender();const state=gateState();$$('#cards .course').forEach(b=>{const i=Number(b.dataset.island);if(i<0)return;const locked=!state.unlocked[i];b.classList.toggle('locked',locked);b.setAttribute('aria-disabled',String(locked));b.querySelector('.status').textContent=locked?'尚未解鎖':count(i)===3?'已完成':count(i)?'填寫中':'可開始';if(locked)b.setAttribute('aria-label',data[i].name+'，請先完成上一關')});const start=$('#detail .primary');if(start&&!state.unlocked[selected]){start.disabled=true;start.textContent='請先完成上一關'}};
+render=function(){originalRender();const state=gateState();$$('#cards .course').forEach(b=>{const i=Number(b.dataset.island);if(i<0)return;const locked=!state.unlocked[i];b.classList.toggle('locked',locked);b.setAttribute('aria-disabled',String(locked));b.querySelector('.status').textContent=locked?'尚未解鎖':count(i)===data[i].tasks.length?'已完成':count(i)?'填寫中':'可開始';if(locked)b.setAttribute('aria-label',data[i].name+'，請先完成上一關')});const start=$('#detail .primary');if(start&&!state.unlocked[selected]){start.disabled=true;start.textContent='請先完成上一關'}};
 const taskPrompts=[
  ['請用自己的話說明陽光如何轉成電能，以及電能如何供風扇使用。','請預測光照或板面角度改變時，輸出電功率會如何變化，並說明理由。','請寫出操縱變因、保持不變的條件，以及你要量測的項目。'],
  ['請抄錄行動電源的標示容量、對應電壓、額定容量及 USB 輸出規格。','請寫出 mAh 換算 Wh 的算式、代入數值、結果與單位。','請先預測風扇能運轉多久，並寫出你的假設與理由。'],
@@ -41,6 +41,7 @@ function submitLesson(i){
 document.addEventListener('input',e=>{if($('#lesson').open&&e.target.closest('#lessonBody'))updateLessonGate(selected)});
 $('#clear').onclick=()=>{if(confirm('確定清除本瀏覽器的全部作答、量測表與學習進度嗎？課程名稱會保留。')){localStorage.removeItem('solar-lab-v1');done={};save();selected=0;render();toast('全部作答與進度已重設')}};
 const stateAtStart=gateState();selected=stateAtStart.counts.findIndex((c,i)=>stateAtStart.unlocked[i]&&c<3);if(selected<0)selected=data.length-1;render();
+
 
 
 

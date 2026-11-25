@@ -1,0 +1,31 @@
+const IMAGE_LIMIT=8*1024*1024;
+async function screenshotStudent(request,env){const token=(request.headers.get('Authorization')||'').replace(/^Bearer /,'');if(token.length!==72)return null;const tokenHash=await hash(token),session=await env.DB.prepare('SELECT student_id FROM sessions WHERE token_hash = ? AND expires_at > ?').bind(tokenHash,Date.now()).first();return session?{...session,tokenHash}:null}
+async function ownScreenshots(env,id){return (await env.DB.prepare('SELECT id, mime_type AS type, size, created_at AS createdAt FROM screenshots WHERE student_id = ? ORDER BY created_at, id').bind(id).all()).results||[]}
+function validImage(bytes,type){if(type==='image/png'){if(bytes.length<33||![137,80,78,71,13,10,26,10].every((v,i)=>bytes[i]===v)||String.fromCharCode(...bytes.slice(12,16))!=='IHDR')return false;const view=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength),width=view.getUint32(16),height=view.getUint32(20);return width>0&&height>0&&width*height<=64000000}if(type==='image/jpeg')return bytes.length>=20&&bytes[0]===255&&bytes[1]===216&&bytes[2]===255&&bytes.at(-2)===255&&bytes.at(-1)===217;if(type==='image/webp')return bytes.length>=16&&String.fromCharCode(...bytes.slice(0,4))==='RIFF'&&String.fromCharCode(...bytes.slice(8,12))==='WEBP';return false}
+async function boundedImage(request){const reader=request.body?.getReader();if(!reader)return new Uint8Array();let total=0;const chunks=[];while(true){const {value,done}=await reader.read();if(done)break;total+=value.length;if(total>IMAGE_LIMIT){await reader.cancel();return null}chunks.push(value)}const bytes=new Uint8Array(total);let position=0;for(const chunk of chunks){bytes.set(chunk,position);position+=chunk.length}return bytes}
+async function clearScreenshotObjects(env,maxVersion){if(!env.BUCKET)return;let cursor;do{const page=await env.BUCKET.list({prefix:'screenshots/',limit:1000,...(cursor?{cursor}:{})});const keys=page.objects.filter(o=>Number(o.key.split('/')[1])<=maxVersion).map(o=>o.key);if(keys.length)await env.BUCKET.delete(keys);cursor=page.truncated?page.cursor:null}while(cursor)}
+async function screenshotRoute(request,env){
+ const path=new URL(request.url).pathname,student=await screenshotStudent(request,env),teacher=await teacherSession(request,env);
+ if(!student&&!teacher)return json({error:'請先登入後再操作截圖。',resetVersion:await resetVersion(env)},401);
+ if(path==='/api/teacher/screenshots'&&request.method==='GET'){
+  if(!teacher)return json({error:'僅教師可查看全班截圖。'},403);const rows=(await env.DB.prepare('SELECT s.id, s.student_id AS studentId, s.mime_type AS type, s.size, s.created_at AS createdAt, c.completed_at AS submittedAt FROM screenshots s LEFT JOIN screenshot_completions c ON c.student_id = s.student_id ORDER BY s.student_id, s.created_at').all()).results||[];return json({images:rows.map(r=>({...r,student:ROSTER.find(s=>s.id===r.studentId)})),resetVersion:await resetVersion(env)});
+ }
+ if(path==='/api/screenshots'&&request.method==='GET'){
+  if(!student)return json({error:'請使用學生登入。'},403);const completed=await env.DB.prepare('SELECT completed_at FROM screenshot_completions WHERE student_id = ?').bind(student.student_id).first();return json({images:await ownScreenshots(env,student.student_id),submitted:!!completed,resetVersion:await resetVersion(env)});
+ }
+ const fileMatch=path.match(/^\/api\/screenshots\/([a-f0-9-]{36})$/);
+ if(fileMatch){const row=await env.DB.prepare('SELECT * FROM screenshots WHERE id = ?').bind(fileMatch[1]).first();if(!row||!teacher&&row.student_id!==student?.student_id)return json({error:'找不到可存取的截圖。'},404);
+  if(request.method==='GET'){const object=await env.BUCKET.get(row.object_key);if(!object)return json({error:'圖片不存在。'},404);return new Response(object.body,{headers:{'Content-Type':row.mime_type,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Content-Disposition':'inline; filename="screenshot.'+(row.mime_type==='image/png'?'png':row.mime_type==='image/jpeg'?'jpg':'webp')+'"'}})}
+  if(request.method==='DELETE'){if(!allowedOrigin(request))return json({error:'來源不允許。'},403);await env.DB.batch([env.DB.prepare('DELETE FROM screenshots WHERE id = ?').bind(row.id),env.DB.prepare('DELETE FROM screenshot_completions WHERE student_id = ?').bind(row.student_id)]);await env.BUCKET.delete(row.object_key);return json({ok:true,...await summary(env)})}
+ }
+ if(path==='/api/screenshots'&&request.method==='POST'){
+  if(!student||!allowedOrigin(request))return json({error:'請由學生本人登入後貼圖。'},403);
+  if(!env.BUCKET)return json({error:'圖片儲存服務尚未就緒。'},503);const type=(request.headers.get('Content-Type')||'').split(';')[0];if(!['image/png','image/jpeg','image/webp'].includes(type))return json({error:'請使用 PNG、JPG 或 WebP 圖片。'},415);
+  if(Number(request.headers.get('Content-Length')||0)>IMAGE_LIMIT)return json({error:'每張圖片上限 8 MB。'},413);const bytes=await boundedImage(request);if(!bytes)return json({error:'每張圖片上限 8 MB。'},413);const buffer=bytes.buffer;if(!validImage(bytes,type))return json({error:'這不是有效的 PNG、JPG 或 WebP 圖片。'},415);
+  if((await ownScreenshots(env,student.student_id)).length>=5)return json({error:'最多保留 5 張截圖，請先移除舊圖。'},409);
+  const version=await resetVersion(env),id=crypto.randomUUID(),key='screenshots/'+version+'/'+student.student_id+'/'+id;await env.BUCKET.put(key,buffer,{httpMetadata:{contentType:type}});
+  try{const inserted=await env.DB.prepare('INSERT INTO screenshots (id, student_id, object_key, mime_type, size, created_at, reset_version) SELECT ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM sessions WHERE token_hash = ? AND expires_at > ?) AND (SELECT COUNT(*) FROM screenshots WHERE student_id = ?) < 5').bind(id,student.student_id,key,type,bytes.length,Date.now(),version,student.tokenHash,Date.now(),student.student_id).run();if(Number(inserted.meta?.changes??inserted.changes)!==1){await env.BUCKET.delete(key);return json({error:'登入已到期或圖片已達上限，請重新整理。'},409)}await env.DB.prepare('DELETE FROM screenshot_completions WHERE student_id = ?').bind(student.student_id).run()}catch(e){await env.BUCKET.delete(key);throw e}
+  return json({images:await ownScreenshots(env,student.student_id),submitted:false,...await summary(env)},201);
+ }
+ return json({error:'找不到貼圖功能。'},404);
+}
