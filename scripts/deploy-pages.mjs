@@ -1,0 +1,10 @@
+import fs from 'node:fs';
+const {GH_TOKEN,GITHUB_REPOSITORY,GITHUB_RUN_ID,GITHUB_SHA,GITHUB_OUTPUT,ACTIONS_ID_TOKEN_REQUEST_URL,ACTIONS_ID_TOKEN_REQUEST_TOKEN}=process.env;
+if(!GH_TOKEN||!GITHUB_REPOSITORY||!ACTIONS_ID_TOKEN_REQUEST_URL)throw new Error('GitHub Actions deployment context is missing.');
+async function api(path,body){const response=await fetch('https://api.github.com'+path,{method:body?'POST':'GET',headers:{Authorization:'Bearer '+GH_TOKEN,Accept:'application/vnd.github+json','Content-Type':'application/json','X-GitHub-Api-Version':'2022-11-28'},...(body?{body:JSON.stringify(body)}:{})});if(!response.ok)throw new Error('GitHub Pages API returned HTTP '+response.status);return response.json()}
+const artifacts=await api('/repos/'+GITHUB_REPOSITORY+'/actions/runs/'+GITHUB_RUN_ID+'/artifacts?per_page=100');const artifact=artifacts.artifacts.find(a=>a.name==='github-pages'&&!a.expired);if(!artifact)throw new Error('The uploaded Pages artifact is unavailable.');
+const oidcResponse=await fetch(ACTIONS_ID_TOKEN_REQUEST_URL,{headers:{Authorization:'Bearer '+ACTIONS_ID_TOKEN_REQUEST_TOKEN}});if(!oidcResponse.ok)throw new Error('Could not obtain the deployment identity.');const oidc=(await oidcResponse.json()).value;process.stdout.write('::add-mask::'+oidc+'\n');
+const deployment=await api('/repos/'+GITHUB_REPOSITORY+'/pages/deployments',{artifact_id:artifact.id,pages_build_version:GITHUB_SHA,oidc_token:oidc});
+if(GITHUB_OUTPUT)fs.appendFileSync(GITHUB_OUTPUT,'page_url=https://'+GITHUB_REPOSITORY.split('/')[0]+'.github.io/'+GITHUB_REPOSITORY.split('/')[1]+'/\n');
+for(let i=0;i<60;i++){const state=await api('/repos/'+GITHUB_REPOSITORY+'/pages/deployments/'+deployment.id);if(['succeed','succeeded','success','built'].includes(state.status)){console.log('GitHub Pages deployment succeeded.');process.exit(0)}if(['errored','failed','failure','build_failed','cancelled','deployment_failed'].includes(state.status))throw new Error('GitHub Pages deployment failed: '+state.status);await new Promise(resolve=>setTimeout(resolve,2000))}
+throw new Error('GitHub Pages deployment timed out.');

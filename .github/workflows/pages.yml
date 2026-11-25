@@ -50,6 +50,8 @@ jobs:
           test "$found" -eq 1
       - name: Deploy GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/deploy-pages.mjs
 
 
