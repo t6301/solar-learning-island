@@ -1,1 +1,20 @@
-{"version":"7","dialect":"sqlite","entries":[{"idx":0,"version":"6","when":1795507200000,"tag":"0000_classroom","breakpoints":true}]}
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1795507200000,
+      "tag": "0000_classroom",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1795564800000,
+      "tag": "0001_battery_teacher",
+      "breakpoints": true
+    }
+  ]
+}

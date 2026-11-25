@@ -22,6 +22,11 @@
    [[/AI|人工智慧|未使用/i,'指出 AI 的說法；沒有使用時請交代查證對象。'],[/實測|手算|數據|證據|計算/,'提供自己的實測或手算證據。'],[/採用|修正|拒絕|不同意|核對|比較/,'說明採用、修正或拒絕的處理理由。']],
    [[/結果|摘要|功率|耗能|電能|時間/,'補上報告摘要或量測結果。'],[/AI|人工智慧|未使用/i,'揭露使用的 AI 工具或註明未使用 AI。'],[/自己|自行|親自|我們完成|我完成/,'交代哪些部分由自己完成。']],
    [[/教師|老師|完整放電/,'引用教師完整放電實測的資料。'],[/差異|誤差|相差|偏差|比較/,'指出你的推估與實測相差多少。'],[/原因|因為|發熱|轉速|電量|效率|負載/,'提出差異的可能原因。']]
+  ],
+  [
+   [[/電池|行動電源|儲能/,'指出電池或行動電源的儲能角色。'],[/電能|化學能|能量/,'說明儲存與輸出的能量。'],[/充電|放電|供電|轉換/,'說明充電或放電過程。']],
+   [],
+   [[/功率|負載|電量|容量/,'指出你比較的功率或電量條件。'],[/時間|小時|運轉/,'比較可運轉時間。'],[/因為|所以|增加|減少|變短|變長|較短|較長|理由/,'解釋時間為何改變。']]
   ]
  ];
  function measurementsComplete(rows={}){
@@ -53,12 +58,14 @@
   if(equation){const expected=+equation[1]*+equation[2]/1000;if(Math.abs(+equation[3]-expected)>Math.max(.02,expected*.03)){issues.push('換算算式的結果與前面數值不符，請重算「容量 × 電壓 ÷ 1000」。');blocking=true}}
   return {score,passed:textComplete(text)&&score>=threshold&&!blocking,issues,strengths};
  }
- function review(i,lab={}){const tasks=Array.from({length:3},(_,j)=>i===2&&j===1?measurementReview(lab.rows):textReview(i,j,lab));return {version,threshold,score:Math.round(tasks.reduce((a,t)=>a+t.score,0)/3),passed:tasks.every(t=>t.passed),tasks}}
- function fingerprint(i,lab={}){const raw=JSON.stringify({version,answers:Array.from({length:3},(_,j)=>(lab.answers||{})[i+'-'+j]||''),rows:i===2?Array.from({length:11},(_,m)=>['v','a','w','mah','wh','obs'].map(k=>(lab.rows||{})[m+'-'+k]||'')):null});let h=2166136261;for(let k=0;k<raw.length;k++)h=Math.imul(h^raw.charCodeAt(k),16777619);return (h>>>0).toString(16)}
+ function batteryModel(c){const capacity=+c.capacity,voltage=+c.voltage,charge=+c.charge,efficiency=+c.efficiency,power=+c.power;if(![capacity,voltage,charge,efficiency,power].every(Number.isFinite)||capacity<=0||voltage<=0||power<=0||charge<0||charge>100||efficiency<=0||efficiency>100)return null;const nominalWh=capacity*voltage/1000,usableWh=nominalWh*charge/100*efficiency/100;return {nominalWh,usableWh,hours:usableWh/power}}
+ function batteryReview(trials){const valid=Array.isArray(trials)&&trials.length>=3&&trials.every(c=>c&&batteryModel(c));const unique=valid?new Set(trials.map(c=>[+c.capacity,+c.voltage,+c.charge,+c.efficiency,+c.power].join('|'))).size:0;const passed=valid&&unique>=3;return {score:passed?100:valid?50:0,passed,issues:passed?[]:['請操作電池模擬器，改變功率或電量等條件，記錄至少三個不同情境。'],strengths:passed?['已完成三個不同情境的互動探索。']:[]}}
+ function review(i,lab={}){const tasks=Array.from({length:3},(_,j)=>i===2&&j===1?measurementReview(lab.rows):i===4&&j===1?batteryReview(lab.batteryTrials):textReview(i,j,lab));return {version,threshold,score:Math.round(tasks.reduce((a,t)=>a+t.score,0)/3),passed:tasks.every(t=>t.passed),tasks}}
+ function fingerprint(i,lab={}){const raw=JSON.stringify({version,answers:Array.from({length:3},(_,j)=>(lab.answers||{})[i+'-'+j]||''),rows:i===2?Array.from({length:11},(_,m)=>['v','a','w','mah','wh','obs'].map(k=>(lab.rows||{})[m+'-'+k]||'')):null,...(i===4?{batteryTrials:lab.batteryTrials||[]}:{})});let h=2166136261;for(let k=0;k<raw.length;k++)h=Math.imul(h^raw.charCodeAt(k),16777619);return (h>>>0).toString(16)}
  function progress(lab={}){
-  const tasks=Array.from({length:4},()=>[false,false,false]),unlocked=[true,false,false,false],reports=[];
-  for(let i=0;i<4;i++){if(i>0)unlocked[i]=unlocked[i-1]&&tasks[i-1].every(Boolean);const report=review(i,lab);reports.push(report);const submission=(lab.submissions||{})[i];if(unlocked[i]&&submission&&submission.version===version&&submission.fingerprint===fingerprint(i,lab))tasks[i]=report.tasks.map(t=>t.passed)}
+  const tasks=Array.from({length:5},()=>[false,false,false]),unlocked=[true,false,false,false,true],reports=[];
+  for(let i=0;i<5;i++){if(i>0&&i<4)unlocked[i]=unlocked[i-1]&&tasks[i-1].every(Boolean);const report=review(i,lab);reports.push(report);const submission=(lab.submissions||{})[i];if(unlocked[i]&&submission&&submission.version===version&&submission.fingerprint===fingerprint(i,lab))tasks[i]=report.tasks.map(t=>t.passed)}
   return {tasks,unlocked,counts:tasks.map(a=>a.filter(Boolean).length),reports};
  }
- root.SolarProgress={version,threshold,textComplete,measurementsComplete,review,fingerprint,progress};
+ root.SolarProgress={version,threshold,textComplete,measurementsComplete,batteryModel,review,fingerprint,progress};
 })(typeof window==='undefined'?globalThis:window);
